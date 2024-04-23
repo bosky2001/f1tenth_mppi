@@ -37,7 +37,7 @@ jRNG = oneLineJaxRNG(1337)
 class MPPIPlanner(Node):
     def __init__(self):
         super().__init__('mppi_node')
-        self.waypoint_path = "/home/bosky2001/Downloads/levine_raceline.csv"
+        self.waypoint_path = "/home/bosky2001/Downloads/f1tenth_stack/f1tenth_gym/sim_ws/src/mppi/trajectories/levine_10s_attempt.csv"
 
         self.waypoints = self.load_waypoints(self.waypoint_path)
 
@@ -67,7 +67,7 @@ class MPPIPlanner(Node):
         self.a_cov = None
         self.mppi_state = None
         
-
+        self.target_vel = 3.0
         self.norm_param = np.array([0.45, 3.5])
         self.init_state()
         self.ref_goal_points_data = self.viz_ref_points()
@@ -119,7 +119,7 @@ class MPPIPlanner(Node):
         state = np.array([x_state, y_state, steer_angle, vel_state, yaw_state])
         # print(da.shape)
 
-        ref_traj,_ = self.mppi_env.get_refernece_traj(state, target_speed = 3,  vind = 5, speed_factor= 1)
+        ref_traj,_ = self.mppi_env.get_refernece_traj(state, target_speed = self.target_vel,  vind = 5, speed_factor= 1)
         # print(ref_traj.shape) #[n_steps + 1, 7]
 
         self.mppi_state, sampled_traj, s_opt, _, _,_ = self.mppi.update(self.mppi_state, self.mppi_env, state.copy(), self.jRNG.new_key(), da)
