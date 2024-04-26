@@ -21,6 +21,8 @@ from geometry_msgs.msg import Point
 from scipy.spatial.transform import Rotation
 from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
+
+from mppi_msgs.msg import SampledTrajs
 import time
 
 class oneLineJaxRNG:
@@ -37,7 +39,7 @@ jRNG = oneLineJaxRNG(1337)
 class MPPIPlanner(Node):
     def __init__(self):
         super().__init__('mppi_node')
-        self.waypoint_path = "/home/bosky2001/Downloads/f1tenth_stack/f1tenth_gym/sim_ws/src/mppi/trajectories/levine_10s_attempt.csv"
+        self.waypoint_path = "/home/bosky2001/Downloads/f1tenth_stack/f1tenth_gym/sim_ws/src/f1tenth_mppi/mppi/trajectories/levine_10s_attempt.csv"
 
         self.waypoints = self.load_waypoints(self.waypoint_path)
 
@@ -48,7 +50,7 @@ class MPPIPlanner(Node):
         self.ref_goal_points_ = self.create_publisher(MarkerArray, 'ref_goal_points', 1)
         self.ref_trajectory_ = self.create_publisher(Marker,'ref_trajectory', 1)
         self.opt_trajectory_ = self.create_publisher(Marker,'opt_trajectory', 1)
-        self.sampled_trajectory_ = self.create_publisher(Marker,'sampled_trajectory', 1)
+        self.sampled_trajectory_ = self.create_publisher(SampledTrajs,'sampled_trajectories', 1)
 
         # MPPI params
         self.n_steps = 12
