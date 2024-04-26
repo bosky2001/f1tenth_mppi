@@ -21,6 +21,9 @@ from geometry_msgs.msg import Point
 from scipy.spatial.transform import Rotation
 from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
+
+from mppi_msgs.msg import SampledTrajs
+from std_msgs.msg import Float32MultiArray, MultiArrayDimension
 import time
 
 class oneLineJaxRNG:
@@ -37,7 +40,7 @@ jRNG = oneLineJaxRNG(1337)
 class MPPIPlanner(Node):
     def __init__(self):
         super().__init__('mppi_node')
-        self.waypoint_path = "/home/bosky2001/Downloads/f1tenth_stack/f1tenth_gym/sim_ws/src/mppi/trajectories/levine_10s_attempt.csv"
+        self.waypoint_path = "/home/bosky2001/Downloads/f1tenth_stack/f1tenth_gym/sim_ws/src/f1tenth_mppi/mppi/trajectories/levine_10s_attempt.csv"
 
         self.waypoints = self.load_waypoints(self.waypoint_path)
 
@@ -48,7 +51,8 @@ class MPPIPlanner(Node):
         self.ref_goal_points_ = self.create_publisher(MarkerArray, 'ref_goal_points', 1)
         self.ref_trajectory_ = self.create_publisher(Marker,'ref_trajectory', 1)
         self.opt_trajectory_ = self.create_publisher(Marker,'opt_trajectory', 1)
-        self.sampled_trajectory_ = self.create_publisher(Marker,'sampled_trajectory', 1)
+        # self.sampled_trajectory_ = self.create_publisher(SampledTrajs,'sampled_trajectories', 1)
+        self.sampled_trajectory_ = self.create_publisher(Float32MultiArray,'sampled_trajectories', 1)
 
         # MPPI params
         self.n_steps = 12
@@ -153,6 +157,7 @@ class MPPIPlanner(Node):
         self.viz_opt_traj(s_opt)
 
         # self.viz_sampled_traj(sampled_traj[0])
+        self.pub_sampled_traj(sampled_traj[0])
         self.ref_goal_points_.publish(self.ref_goal_points_data)
         
 
@@ -233,6 +238,23 @@ class MPPIPlanner(Node):
                 # print(f'Publishing ref traj x={x}, y={y}')
                 traj.points.append(Point(x=float(x), y=float(y), z=0.0))
         self.sampled_trajectory_.publish(traj)
+    
+    def pub_sampled_traj(self, sampled_traj):
+        # print(sampled_traj.shape)
+        samples = Float32MultiArray()
+        # msg = Float64MultiArray()
+        dim1 = MultiArrayDimension()
+        dim1.size = self.n_samples
+        samples.layout.dim.append(dim1)
+        dim2 = MultiArrayDimension()
+        dim2.size = self.n_steps
+        samples.layout.dim.append(dim2)
+
+        dim3 = MultiArrayDimension()
+        dim3.size = sampled_traj.shape[2]
+        samples.layout.dim.append(dim3)
+        samples.data = sampled_traj.reshape(-1).astype(float).tolist()
+        self.sampled_trajectory_.publish(samples)
 
 
 def main(args=None):
