@@ -22,7 +22,7 @@ from scipy.spatial.transform import Rotation
 from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
 
-from mppi_msgs.msg import SampledTrajs
+
 from std_msgs.msg import Float32MultiArray, MultiArrayDimension
 import time
 
@@ -51,14 +51,18 @@ class MPPIPlanner(Node):
         self.ref_goal_points_ = self.create_publisher(MarkerArray, 'ref_goal_points', 1)
         self.ref_trajectory_ = self.create_publisher(Marker,'ref_trajectory', 1)
         self.opt_trajectory_ = self.create_publisher(Marker,'opt_trajectory', 1)
+
         # self.sampled_trajectory_ = self.create_publisher(SampledTrajs,'sampled_trajectories', 1)
         self.sampled_trajectory_ = self.create_publisher(Float32MultiArray,'sampled_trajectories', 1)
+        self.ref_traj_array_ = self.create_publisher(Float32MultiArray,'ref_traj_array', 1)
+        self.opt_traj_array_ = self.create_publisher(Float32MultiArray,'opt_traj_array', 1)
+
 
         # MPPI params
         self.n_steps = 12
         self.n_samples = 128
         self.jRNG = jRNG
-        self.DT = 0.05
+        self.DT = 0.1
         self.is_real = False
         pose_topic = "/pf/viz/inferred_pose" if self.is_real else "/ego_racecar/odom"
         self.pose_sub_ = self.create_subscription(PoseStamped if self.is_real else Odometry, pose_topic, self.pose_callback, 1)
@@ -191,6 +195,19 @@ class MPPIPlanner(Node):
     
     def viz_rej_traj(self, ref_traj):
 
+        ref_array = Float32MultiArray()
+
+        dim1 = MultiArrayDimension()
+        dim1.size = ref_traj.shape[0]  # Number of steps
+        ref_array.layout.dim.append(dim1)
+
+        dim2 = MultiArrayDimension()
+        dim2.size = ref_traj.shape[1]  # Number of states
+        ref_array.layout.dim.append(dim2)
+
+        ref_array.data = ref_traj.reshape(-1).astype(float).tolist()
+        self.ref_traj_array_ .publish(ref_array)
+
         traj = Marker(type=Marker.LINE_STRIP,
                         scale=Vector3(x=0.1, y=0.1, z=0.1))
         traj.header.frame_id = 'map'
@@ -199,13 +216,30 @@ class MPPIPlanner(Node):
         traj.color.b = 1.0
         traj.color.a = 1.0
         traj.id = 1
-        for i in range(ref_traj.shape[1]):
+        print(ref_traj.shape)
+        for i in range(ref_traj.shape[0]):
             x, y = ref_traj[i, :2]
             # print(f'Publishing ref traj x={x}, y={y}')
             traj.points.append(Point(x=x, y=y, z=0.0))
         self.ref_trajectory_.publish(traj)
 
     def viz_opt_traj(self, opt_traj):
+        
+        opt_array = Float32MultiArray()
+
+        print(opt_traj.shape[0])
+        print(opt_traj.shape[1] )
+        dim1 = MultiArrayDimension()
+        dim1.size = opt_traj.shape[0]  # Number of steps
+        opt_array.layout.dim.append(dim1)
+
+        dim2 = MultiArrayDimension()
+        dim2.size = opt_traj.shape[1]  # Number of states
+        opt_array.layout.dim.append(dim2)
+
+        opt_array.data = opt_traj.reshape(-1).astype(float).tolist()
+        self.opt_traj_array_ .publish(opt_array)
+
 
         traj = Marker(type=Marker.LINE_STRIP,
                         scale=Vector3(x=0.1, y=0.1, z=0.1))
