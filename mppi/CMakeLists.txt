@@ -23,7 +23,8 @@ foreach(PACKAGE
   std_msgs
   visualization_msgs
   Eigen3
-  tf2_ros)
+  tf2_ros
+  mppi_msgs)
 
   find_package(${PACKAGE} REQUIRED)
 
