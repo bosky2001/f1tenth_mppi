@@ -35,3 +35,6 @@ Scalability: The sampling-based approach in MPPI scales better to high-dimension
 Robustness: MPPI can cope with model uncertainties and disturbances by continuously re-evaluating the control distribution based on the latest state information.
 
 MPPI has been successfully applied in various domains, including robotics, autonomous vehicles, and aerospace systems, where it has demonstrated superior performance in controlling complex, nonlinear systems.
+
+# CODE WALKTHROUGH
+This repo contains MPPI written in JAX by [Google Research](https://github.com/google-research/google-research/blob/c9f05e51f37cacc291f58799a1f732743625078b/jax_mpc/jax_mpc/mppi.py). JAX is particularly suited for monte-carlo style MPC, as rollouts can be efficiently parallelized using jax.vmap().
