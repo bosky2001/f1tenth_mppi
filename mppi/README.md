@@ -58,7 +58,7 @@ This file contains the main ROS node implementation and serves as the entry poin
 
 To use this code, you need to have a working ROS2 environment set up and the required dependencies installed (e.g., `jax`, `jaxlib`, `numpy`, `rclpy`). Here are the steps to run the code:
 
-1. Launch the f1tenth ROS simulator by running `$ ros2 launch f1tenth_gym_ros gym_bridge_launch.py`
+1. Launch the f1tenth ROS simulator by running ` ros2 launch f1tenth_gym_ros gym_bridge_launch.py`
 2. In another terminal, navigate to the catkin workspace directory containing the source folder.
 3. Run ` colcon build ` to build the environment and run ` ros2 run mppi mppi_node.py`
 4. The MPPI planner node should start, and you should see output messages indicating its initialization.
