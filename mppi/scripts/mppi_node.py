@@ -294,7 +294,7 @@ class MPPIPlanner(Node):
 def main(args=None):
 
     rclpy.init(args=args)
-    print("MPC Initialized")
+    print("MPPI Initialized")
     mpc_node = MPPIPlanner()
     rclpy.spin(mpc_node)
 
