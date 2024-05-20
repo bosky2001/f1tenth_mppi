@@ -3,7 +3,7 @@ This repo contains MPPI written in JAX by [Google Research](https://github.com/g
 
 # Model Predictive Path Integral (MPPI) Control for F1TENTH Autonomous Racing
 
-This is a detailed tutorial on how to use and walk through the provided code, which is an implementation of the Model Predictive Path Integral (MPPI) control algorithm for motion planning and control in autonomous systems, specifically for the F1TENTH autonomous racing platform.
+This is a detailed tutorial on how to use and walk through the provided code, which is an implementation of the Model Predictive Path Integral (MPPI) control algorithm for trajectory tracking for the F1TENTH autonomous racing platform.
 
 ## Understanding MPPI
 
@@ -13,9 +13,9 @@ Before diving into the code, let's first understand the MPPI algorithm and its c
 - MPC is an advanced control technique that uses a system model to predict the future behavior of the system and optimize the control inputs over a receding horizon.
 - MPPI is a variant of MPC that uses a sampling-based approach to approximate the optimal control sequence.
 
-### Path Integral Control
-- Path integral control is a stochastic optimal control technique that uses sampling to compute the optimal control input distribution.
-- MPPI borrows the concept of weighting the sampled control sequences based on their associated costs or rewards.
+### Model Predictive Path Integral
+- MPPI is a variant of MPC that uses a sampling-based approach to approximate the optimal control sequence
+- MPPI generates candidate control sequences, evaluates their associated costs or rewards, and then computes the optimal control sequence by weighting the sampled sequences based on their returns (sum of rewards).
 
 ## Code Walkthrough
 
@@ -36,7 +36,6 @@ This file contains the implementation of the environment model used by the MPPI 
 - `MPPIEnv` class: Represents the environment model for the F1TENTH autonomous racing platform.
 - `step`: Simulates the system dynamics using either the kinematic single-track (KS) model or the dynamic single-track (ST) model, taking the current state and control inputs as input and returning the next state, rewards, and dynamics residuals.
 - `reward_fn`: Computes the reward based on the current state and a reference trajectory.
-- `calc_ref_trajectory`: Calculates the reference trajectory for a given state, course, and speed profile.
 - `get_reference_traj`: Generates the reference trajectory for the current state based on the waypoints and target speed.
 
 ### 3. `mppi_node.py`
