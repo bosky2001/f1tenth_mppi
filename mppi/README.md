@@ -9,13 +9,31 @@ This is a detailed tutorial on how to use and walk through the provided code, wh
 
 Before diving into the code, let's first understand the MPPI algorithm and its components:
 
-### Model Predictive Control (MPC)
-- MPC is an advanced control technique that uses a system model to predict the future behavior of the system and optimize the control inputs over a receding horizon.
-- MPPI is a variant of MPC that uses a sampling-based approach to approximate the optimal control sequence.
+### What is Model Predictive Control (MPC)?
+Model Predictive Control (MPC) is an advanced control technique that uses a system model to predict the future behavior of the system and optimize the control inputs over a receding horizon.
 
-### Model Predictive Path Integral
-- MPPI is a variant of MPC that uses a sampling-based approach to approximate the optimal control sequence
-- MPPI generates candidate control sequences, evaluates their associated costs or rewards, and then computes the optimal control sequence by weighting the sampled sequences based on their returns (sum of rewards).
+### What is Path Integral Control?
+Path Integral Control is a stochastic optimal control technique that uses sampling to compute the optimal control input distribution. MPPI borrows the concept of weighting sampled control sequences based on their associated costs or rewards.
+
+### How does MPPI work?
+MPPI is a variant of MPC that uses a sampling-based approach to approximate the optimal control sequence.
+
+1. **Sampling and Weighting**:
+The key idea in MPPI is to use sampling to efficiently approximate the optimal control sequence. MPPI generates a set of K candidate control sequences by sampling random variations (noise) around a nominal control sequence. For each candidate sequence, a trajectory is simulated, and the associated cost-to-go (sum of state-dependent costs and control costs) is evaluated.
+
+3. **Optimal Control Update**:  
+  The candidate control sequences are weighted based on their associated costs, using the exponential transformation of the cost (similar to the Path Integral Control framework). The optimal control sequence is then computed as a weighted average of the candidate control sequences, where the weights are proportional to the exponential of the negative cost-to-go.
+
+4. **Model Predictive Control (MPC) Setting**:  
+  MPPI operates in a Model Predictive Control (MPC) setting, where the optimal control sequence is constantly optimized in the background, and only the first control action is executed. After executing the first control action, the process is repeated with the new state and a shifted control sequence horizon.
+
+5. **Parallel Implementation on GPU**:  
+  To enable real-time sampling of thousands of trajectories, which is necessary for good performance, MPPI leverages parallel computing on Graphics Processing Units (GPUs). The candidate trajectory simulations are performed in parallel using vectorization techniques.
+
+6. **Cost Function Design**:  
+   MPPI can handle non-smooth cost functions, such as impulse costs for hitting obstacles, which are difficult for traditional gradient-based optimization methods. This is because MPPI does not rely on derivatives of the cost function; it only requires evaluating the cost-to-go for each sampled trajectory.
+
+By combining the Path Integral Control framework with sampling, GPU parallelization, MPPI can effectively optimize control sequences for non-linear systems with non-smooth cost functions.
 
 ## Code Walkthrough
 
