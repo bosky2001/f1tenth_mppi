@@ -27,9 +27,7 @@ The main advantages of MPPI compared to traditional MPC include:
 
 - **Handling high-dimensional and nonlinear systems**: MPPI can handle complex, nonlinear systems with high-dimensional state and action spaces, where traditional MPC methods may struggle due to the computational complexity of solving the optimization problem.
 - **No explicit constraints**: MPPI does not require explicit formulation of constraints on states and inputs, as the cost or reward function can implicitly encode desired constraints.
-- **Scalability**: The sampling-based approach in MPPI scales better to high-dimensional systems compared to optimization-based MPC methods.
 - **Robustness**: MPPI can cope with model uncertainties and disturbances by continuously re-evaluating the control distribution based on the latest state information.
 
-MPPI has been successfully applied in various domains, including robotics, and autonomous vehicles, where it has demonstrated superior performance in controlling complex, nonlinear systems.
 
 
