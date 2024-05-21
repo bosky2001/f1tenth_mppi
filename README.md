@@ -2,6 +2,39 @@
 
 Model predictive control (MPC), also known as receding horizon control or moving horizon control, is an advanced method of process control that has been widely adopted in various industries. It is a form of optimal control that uses an explicit process model to predict the future response of a system over a specified time horizon.
 
+The basic MPC optimization problem can be formulated as:
+
+$$
+\min_{\xi, \mathbf{u}, \theta, \mathbf{v}, \rho} \sum_{k=1}^{N} e_{k}^T Q e_{k} + u_{k}^T R u_{k} + \Delta u_{k}^T S \Delta u_{k} - \gamma \rho_{k}
+$$
+$$
+\text{s.t.} \quad \xi_0 = \xi_\text{init},
+$$
+$$
+\xi_{k+1} = f(\xi_k, u_k),
+$$
+$$
+\theta_{k+1} = \theta_k + \rho_k I_s,
+$$
+$$
+0 \leq \theta_k \leq L,
+$$
+$$
+0 \leq \rho_k \leq \bar{\rho},
+$$
+$$
+\underline{\xi} \leq \xi_k \leq \bar{\xi},
+$$
+$$
+\underline{u} \leq u_k \leq \bar{u},
+$$
+$$
+\underline{b} \leq \Delta x_\text{pos} \leq \bar{b}
+$$
+
+Here, the objective is to minimize the sum of tracking errors, control efforts, and change in control efforts, subject to constraints on the initial state, system dynamics, state and input limits, and other problem-specific constraints.
+
+
 The basic principle behind MPC is to optimize the current control action by solving a finite horizon optimal control problem at each time step. The optimization problem involves minimizing an objective function that considers both the desired setpoint and control effort, subject to constraints on the system inputs, outputs, and states.
 
 The key steps involved in MPC are as follows:
