@@ -5,15 +5,15 @@ Model predictive control (MPC), also known as receding horizon control or moving
 The basic MPC optimization problem can be formulated as:
 
 $$
-\min_{\xi, \mathbf{u}, \theta, \mathbf{v}, \rho} \sum_{k=1}^{N} e_{k}^T Q e_{k} + u_{k}^T R u_{k} + \Delta u_{k}^T S \Delta u_{k} - \gamma \rho_{k}
+\min_{\xi, \mathbf{u}, \theta, \mathbf{v}, \rho} \sum_{k=1}^{N} x_{k}^T Q x_{k} + u_{k}^T R u_{k} + \Delta u_{k}^T S \Delta u_{k}
 $$
 
 $$
-\text{s.t.} \quad \xi_0 = \xi_\text{init},
+\text{s.t.} \quad \x_0 = \x_\text{init},
 $$
 
 $$
-\xi_{k+1} = f(\xi_k, u_k),
+\x_{k+1} = f(\xi_k, u_k),
 $$
 
 $$
@@ -21,19 +21,11 @@ $$
 $$
 
 $$
-0 \leq \theta_k \leq L,
+\x_k \in \mathcal{X}_\text{feasible}
 $$
 
 $$
-0 \leq \rho_k \leq \bar{\rho},
-$$
-
-$$
-\underline{\xi} \leq \xi_k \leq \bar{\xi},
-$$
-
-$$
-\underline{u} \leq u_k \leq \bar{u},
+\u_\text{min} \leq u_k \leq \u_\text{max},
 $$
 
 $$
