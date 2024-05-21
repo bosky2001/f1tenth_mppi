@@ -5,7 +5,7 @@ Model predictive control (MPC), also known as receding horizon control or moving
 The basic MPC optimization problem can be formulated as:
 
 $$
-\min_{\xi, \mathbf{u}, \theta, \mathbf{v}, \rho} \sum_{k=1}^{N} x_{k}^T Q x_{k} + u_{k}^T R u_{k} + \Delta u_{k}^T S \Delta u_{k}
+\min_{\mathbf{x}, \mathbf{u}} \sum_{k=1}^{N} x_{k}^T Q x_{k} + u_{k}^T R u_{k} + \Delta u_{k}^T S \Delta u_{k}
 $$
 
 $$
@@ -13,11 +13,7 @@ $$
 $$
 
 $$
-x_{k+1} = f(xi_k, u_k),
-$$
-
-$$
-\theta_{k+1} = \theta_k + \rho_k I_s,
+x_{k+1} = f(x_k, u_k),
 $$
 
 $$
@@ -25,7 +21,7 @@ x_k \in \mathcal{X}_\text{feasible}
 $$
 
 $$
-u_\text{min} \leq u_k \leq u_\text{max},
+u_k \in \mathcal{U}_\text{feasible}
 $$
 
 
