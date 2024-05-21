@@ -9,11 +9,11 @@ $$
 $$
 
 $$
-\text{s.t.} \quad \x_0 = \x_\text{init},
+\text{s.t.} \quad x_0 = x_\text{init},
 $$
 
 $$
-\x_{k+1} = f(\xi_k, u_k),
+x_{k+1} = f(xi_k, u_k),
 $$
 
 $$
@@ -21,16 +21,13 @@ $$
 $$
 
 $$
-\x_k \in \mathcal{X}_\text{feasible}
+x_k \in \mathcal{X}_\text{feasible}
 $$
 
 $$
-\u_\text{min} \leq u_k \leq \u_\text{max},
+u_\text{min} \leq u_k \leq u_\text{max},
 $$
 
-$$
-\underline{b} \leq \Delta x_\text{pos} \leq \bar{b}
-$$
 
 Here, the objective is to minimize the sum of tracking errors, control efforts, and change in control efforts, subject to constraints on the initial state, system dynamics, state and input limits, and other problem-specific constraints.
 
