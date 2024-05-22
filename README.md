@@ -56,9 +56,8 @@ The main advantages of MPPI compared to traditional MPC include:
 - **Robustness**: MPPI can cope with model uncertainties and disturbances by continuously re-evaluating the control distribution based on the latest state information.
 
 
-# Original Stochastic Optimal Control Problem Formulation
-
-
+ Original Stochastic Optimal Control Problem Formulation
+ 
 $$
 u^*(·) = argmin_{u(·)} \mathbf{E}_Q \left[ \phi(x_T, T) + \int_{t_0}^T L(x_t, u_t, t) dt \right]
 $$
