@@ -28,6 +28,9 @@ from visualization_msgs.msg import MarkerArray
 
 
 from std_msgs.msg import Float32MultiArray, MultiArrayDimension
+
+
+from std_msgs.msg import Float32MultiArray, MultiArrayDimension
 import time
 
 
@@ -579,6 +582,7 @@ class MPPIPlanner(Node):
     def __init__(self):
         super().__init__('mppi_node')
         self.waypoint_path = "/home/bosky2001/Downloads/f1tenth_stack/f1tenth_gym/sim_ws/src/f1tenth_mppi/mppi/trajectories/levine_10s_attempt.csv"
+        self.waypoint_path = "/home/bosky2001/Downloads/f1tenth_stack/f1tenth_gym/sim_ws/src/f1tenth_mppi/mppi/trajectories/levine_10s_attempt.csv"
 
         self.waypoints = self.load_waypoints(self.waypoint_path)
 
@@ -589,6 +593,12 @@ class MPPIPlanner(Node):
         self.ref_goal_points_ = self.create_publisher(MarkerArray, 'ref_goal_points', 1)
         self.ref_trajectory_ = self.create_publisher(Marker,'ref_trajectory', 1)
         self.opt_trajectory_ = self.create_publisher(Marker,'opt_trajectory', 1)
+
+        # self.sampled_trajectory_ = self.create_publisher(SampledTrajs,'sampled_trajectories', 1)
+        self.sampled_trajectory_ = self.create_publisher(Float32MultiArray,'sampled_trajectories', 1)
+        self.ref_traj_array_ = self.create_publisher(Float32MultiArray,'ref_traj_array', 1)
+        self.opt_traj_array_ = self.create_publisher(Float32MultiArray,'opt_traj_array', 1)
+
 
         # self.sampled_trajectory_ = self.create_publisher(SampledTrajs,'sampled_trajectories', 1)
         self.sampled_trajectory_ = self.create_publisher(Float32MultiArray,'sampled_trajectories', 1)
@@ -700,6 +710,7 @@ class MPPIPlanner(Node):
 
         # self.viz_sampled_traj(sampled_traj[0])
         self.pub_sampled_traj(sampled_traj[0])
+        self.pub_sampled_traj(sampled_traj[0])
         self.ref_goal_points_.publish(self.ref_goal_points_data)
         
 
@@ -732,6 +743,19 @@ class MPPIPlanner(Node):
         return ref_points
     
     def viz_rej_traj(self, ref_traj):
+
+        ref_array = Float32MultiArray()
+
+        dim1 = MultiArrayDimension()
+        dim1.size = ref_traj.shape[0]  # Number of steps
+        ref_array.layout.dim.append(dim1)
+
+        dim2 = MultiArrayDimension()
+        dim2.size = ref_traj.shape[1]  # Number of states
+        ref_array.layout.dim.append(dim2)
+
+        ref_array.data = ref_traj.reshape(-1).astype(float).tolist()
+        self.ref_traj_array_ .publish(ref_array)
 
         ref_array = Float32MultiArray()
 
