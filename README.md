@@ -57,8 +57,10 @@ The main advantages of MPPI compared to traditional MPC include:
 
 
 # Original Stochastic Optimal Control Problem Formulation
+$$
+u^*(·) = \arg\min_{u(·)} \mathbb{E}_Q \left[ \phi(x_T, T) + \int_{t_0}^T L(x_t, u_t, t) dt \right]
+$$
 
-$u^*(·) = \arg\min_{u(·)} \mathbb{E}_Q \left[ \phi(x_T, T) + \int_{t_0}^T L(x_t, u_t, t) dt \right]$
 s.t.
 $dx = F(x_t, u_t, t) dt$ 
 
