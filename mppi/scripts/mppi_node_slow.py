@@ -40,7 +40,7 @@ jRNG = oneLineJaxRNG(1337)
 class MPPIPlanner(Node):
     def __init__(self):
         super().__init__('mppi_node')
-        self.waypoint_path = "/home/bosky2001/Downloads/f1tenth_stack/f1tenth_gym/sim_ws/src/f1tenth_mppi/mppi/trajectories/levine_10s_attempt.csv"
+        self.waypoint_path = "/home/nvidia/f1tenth_ws/src/f1tenth_mppi/mppi/trajectories/levine_10s_attempt.csv"
 
         self.waypoints = self.load_waypoints(self.waypoint_path)
 
@@ -63,7 +63,7 @@ class MPPIPlanner(Node):
         self.n_samples = 128
         self.jRNG = jRNG
         self.DT = 0.1
-        self.is_real = False
+        self.is_real = True
         pose_topic = "/pf/viz/inferred_pose" if self.is_real else "/ego_racecar/odom"
         self.pose_sub_ = self.create_subscription(PoseStamped if self.is_real else Odometry, pose_topic, self.pose_callback, 1)
         # self.pose_sub_ = self.create_subscription(Odometry, 'ego_racecar/odom', self.pose_callback, 1)
@@ -75,7 +75,7 @@ class MPPIPlanner(Node):
         self.a_cov = None
         self.mppi_state = None
         
-        self.target_vel = 3.0
+        self.target_vel = 1.5
         self.norm_param = np.array([0.45, 3.5])
         self.init_state()
         self.ref_goal_points_data = self.viz_ref_points()

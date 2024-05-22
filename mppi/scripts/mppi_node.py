@@ -52,9 +52,6 @@ class ConfigYAML():
             setattr(self, key, d[key]) 
     
     
-# TODO: NOT GLOBAL AND MAKE CLASS OBJECT
-config = ConfigYAML()
-config.load_file("/home/bosky2001/Downloads/ESE_6150_FINAL_PROJECT/f1tenth_gym/f1tenth_planning/f1tenth_planning/control/kinematic_mppi/config.yaml")
 
 
 
@@ -270,9 +267,9 @@ class MPPIEnv():
         self.dlk = self.waypoints[1,0] - self.waypoints[0, 0]
 
         # config.load_file(config.savedir + 'config.json')
-        config_norm_params = jnp.array(config.normalization_param[7:9])
+        # config_norm_params = jnp.array(config.normalization_param[7:9])
 
-        self.normalization_param = config_norm_params[:, 0]/2
+        self.normalization_param = jnp.array([0.45, 3.5])
         self.mode = mode
         # self.mb_dyna_pre = None
         if mode == 'ks':
@@ -581,8 +578,7 @@ class MPPIEnv():
 class MPPIPlanner(Node):
     def __init__(self):
         super().__init__('mppi_node')
-        self.waypoint_path = "/home/bosky2001/Downloads/f1tenth_stack/f1tenth_gym/sim_ws/src/f1tenth_mppi/mppi/trajectories/levine_10s_attempt.csv"
-        self.waypoint_path = "/home/bosky2001/Downloads/f1tenth_stack/f1tenth_gym/sim_ws/src/f1tenth_mppi/mppi/trajectories/levine_10s_attempt.csv"
+        self.waypoint_path = "/home/nvidia/f1tenth_ws/src/f1tenth_mppi/mppi/trajectories/levine_10s_attempt.csv"        
 
         self.waypoints = self.load_waypoints(self.waypoint_path)
 
@@ -611,7 +607,7 @@ class MPPIPlanner(Node):
         self.n_samples = 128
         self.jRNG = oneLineJaxRNG(1337)
         self.DT = 0.1
-        self.is_real = False
+        self.is_real = True
         pose_topic = "/pf/viz/inferred_pose" if self.is_real else "/ego_racecar/odom"
         self.pose_sub_ = self.create_subscription(PoseStamped if self.is_real else Odometry, pose_topic, self.pose_callback, 1)
         # self.pose_sub_ = self.create_subscription(Odometry, 'ego_racecar/odom', self.pose_callback, 1)
