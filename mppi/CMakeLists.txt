@@ -23,8 +23,7 @@ foreach(PACKAGE
   std_msgs
   visualization_msgs
   Eigen3
-  tf2_ros
-  mppi_msgs)
+  tf2_ros)
 
   find_package(${PACKAGE} REQUIRED)
 
@@ -42,8 +41,9 @@ ament_python_install_package(${PROJECT_NAME})
 # Install Python executables
 install(PROGRAMS
   scripts/mppi_node.py
+  scripts/mppi_node_slow.py
   scripts/mppi_env.py
-  #scripts/utils.py
+
   DESTINATION lib/${PROJECT_NAME}
 )
 
