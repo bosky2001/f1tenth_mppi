@@ -60,7 +60,7 @@ The main advantages of MPPI compared to traditional MPC include:
 
 
 $$
-u^*(·) = \arg\min_{u(·)} \mathbb{E}_Q  \phi(x_T, T) + \int_{t_0}^T L(x_t, u_t, t) dt
+u^*(·) = \arg\min_{u(·)} \mathbb{E}_Q \left[ \phi(x_T, T) + \int_{t_0}^T L(x_t, u_t, t) dt \right]
 $$
 
 s.t.
