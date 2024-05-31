@@ -620,7 +620,7 @@ class MPPIEnv():
 class MPPIPlanner(Node):
     def __init__(self):
         super().__init__('mppi_node')
-        self.waypoint_path = "/home/bosky2001/Downloads/f1tenth_stack/f1tenth_gym/sim_ws/src/mppi_dev/f1tenth_mppi/trajectories/levine_10s_attempt.csv"
+        self.waypoint_path = "/home/bosky2001/Downloads/f1tenth_stack/f1tenth_gym/sim_ws/src/mppi_dev/f1tenth_mppi/trajectories/levine_1.csv"
 
 
         self.waypoints = self.load_waypoints(self.waypoint_path)
@@ -639,7 +639,7 @@ class MPPIPlanner(Node):
         
 
         self.config = Config()
-        self.config.load_file("/home/bosky2001/Downloads/ESE_6150_FINAL_PROJECT/f1tenth_gym/f1tenth_planning/f1tenth_planning/control/kinematic_mppi/config.yaml")
+        self.config.load_file("/home/bosky2001/Downloads/f1tenth_stack/f1tenth_gym/sim_ws/src/mppi_dev/f1tenth_mppi/config/config.yaml")
 
 
         # MPPI params
