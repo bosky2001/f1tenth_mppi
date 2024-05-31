@@ -41,18 +41,10 @@ ament_python_install_package(${PROJECT_NAME})
 # Install Python executables
 install(PROGRAMS
   scripts/mppi_node.py
-  scripts/mppi_node_slow.py
-  scripts/mppi_node_faster.py
-  scripts/mppi_env.py
-
   DESTINATION lib/${PROJECT_NAME}
 )
 
-install(DIRECTORY
-  scripts/jax_mpc
 
-  DESTINATION lib/${PROJECT_NAME}
-)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
