@@ -1,3 +1,4 @@
+Please refer to [INTRO.md](INTRO.md) for a brief overview of Model Predictive Control (MPC) and Model Predictive Path Integral (MPPI), as well as the key distinctions between these two approaches.
 # CODE WALKTHROUGH
 This repo contains MPPI written in JAX by [Google Research](https://github.com/google-research/google-research/blob/c9f05e51f37cacc291f58799a1f732743625078b/jax_mpc/jax_mpc/mppi.py). JAX is particularly suited for monte-carlo style MPC, as rollouts can be efficiently parallelized using `jax.vmap()`.
 
