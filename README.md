@@ -37,10 +37,9 @@ By combining the Path Integral Control framework with sampling, GPU parallelizat
 
 ## Code Walkthrough
 
-### 1. `mppi.py`
-This file contains the implementation of the MPPI algorithm. Here's a breakdown of the essential components:
+### 1. `MPPI Class`
+This class implements the MPPI algorithm with methods for state initialization, state update, and optimal control action computation.. Here's a breakdown of the essential components:
 
-- `MPPI` class: Implements the MPPI algorithm with methods for state initialization, state update, and optimal control action computation.
 - `init_state`: Initializes the MPPI state, including the optimal control sequence and covariance matrices (if adaptive covariance is used).
 - `update`: Core method that performs the MPPI iteration by generating candidate control sequences, evaluating associated costs/rewards, and computing the optimal control sequence.
 - `get_action`: Retrieves the first control action from the optimal control sequence.
@@ -48,18 +47,16 @@ This file contains the implementation of the MPPI algorithm. Here's a breakdown 
 - `weights`: Helper method that computes the weights for the sampled control sequences based on their associated returns.
 - `rollout`: Helper method that simulates the system dynamics using the provided control sequence and environment model.
 
-### 2. `mppi_env.py`
-This file contains the implementation of the environment model used by the MPPI algorithm. It includes the following components:
+### 2. `MPPIEnv Class`
+This Class represents the environment model for the F1TENTH autonomous racing platform. It includes the following components:
 
-- `MPPIEnv` class: Represents the environment model for the F1TENTH autonomous racing platform.
 - `step`: Simulates the system dynamics using either the kinematic single-track (KS) model or the dynamic single-track (ST) model, taking the current state and control inputs as input and returning the next state, rewards, and dynamics residuals.
 - `reward_fn`: Computes the reward based on the current state and a reference trajectory.
 - `get_reference_traj`: Generates the reference trajectory for the current state based on the waypoints and target speed.
 
-### 3. `mppi_node.py`
-This file contains the main ROS node implementation and serves as the entry point for the MPPI planner. Here's what it does:
+### 3. `MPPIPlanner Class`
+This Class inherits from the `Node` class provided by ROS2 and represents the MPPI planner node. Here's what it does:
 
-- `MPPIPlanner` class: Inherits from the `Node` class provided by ROS2 and represents the MPPI planner node.
 - `__init__`: Initializes the ROS node, sets up publishers and subscribers, loads the waypoints, and creates instances of the `MPPIEnv` and `MPPI` classes.
 - `load_waypoints`: Loads the waypoints from a provided file path.
 - `init_state`: Initializes the MPPI state.
@@ -69,7 +66,7 @@ This file contains the main ROS node implementation and serves as the entry poin
  - Determines the optimal control action from the MPPI state.
  - Publishes the control commands (steering angle and velocity) to the robot.
  - Visualizes the reference trajectory, optimal trajectory, and sampled trajectories.
-- Visualization methods (`viz_ref_points`, `viz_rej_traj`, `viz_opt_traj`, `viz_sampled_traj`, `pub_sampled_traj`): Provided to visualize the reference waypoints, reference trajectory, optimal trajectory, and sampled trajectories.
+- Visualization methods (`viz_ref_points`, `viz_rej_traj`, `viz_opt_traj`, `viz_sampled_traj`): Provided to visualize the reference waypoints, reference trajectory, optimal trajectory, and sampled trajectories.
 
 ## Running the Code
 
@@ -77,7 +74,7 @@ To use this code, you need to have a working ROS2 environment set up and the req
 
 1. Launch the f1tenth ROS simulator by running ` ros2 launch f1tenth_gym_ros gym_bridge_launch.py`
 2. In another terminal, navigate to the catkin workspace directory containing the source folder.
-3. Run ` colcon build ` to build the environment and run ` ros2 run mppi mppi_node.py`
+3. Run ` colcon build ` to build the environment, source the workspace and run ` ros2 run f1tenth_mppi mppi_node.py`
 4. The MPPI planner node should start, and you should see output messages indicating its initialization.
 5. Once the robot's odometry data starts streaming (either from a simulation or a real robot), the MPPI planner will start computing and publishing control commands.
 6. You can visualize the reference waypoints, reference trajectory, optimal trajectory, and sampled trajectories using tools like RViz or other visualization tools that subscribe to the corresponding ROS topics.
