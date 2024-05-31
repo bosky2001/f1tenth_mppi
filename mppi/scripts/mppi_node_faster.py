@@ -22,7 +22,7 @@ import math
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Vector3
 from geometry_msgs.msg import Point
-from scipy.spatial.transform import Rotation
+
 from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
 
@@ -50,36 +50,52 @@ class ConfigYAML():
         d = yaml.safe_load(Path(filename).read_text())
         for key in d: 
             setattr(self, key, d[key]) 
+
+class Config(ConfigYAML):
+    sim_time_step = 0.1
+    render = 1
+    kmonitor_enable = 1
+
+    max_lap = 300
+    random_seed = None    
+
+    n_steps = 10
+    # n_samples = 1024
+    n_samples = 128
+    n_iterations = 1
+    control_dim = 2
+    control_sample_noise = [1.0, 1.0]
+    state_predictor = 'ks'
+    half_width = 4
     
+    adaptive_covariance = False
+    # init_noise = [5e-3, 5e-3, 5e-3] # control_vel, control_steering, state 
+    init_noise = [0, 0, 0] # control_vel, control_steering, state
     
-# TODO: NOT GLOBAL AND MAKE CLASS OBJECT
-config = ConfigYAML()
-config.load_file("/home/bosky2001/Downloads/ESE_6150_FINAL_PROJECT/f1tenth_gym/f1tenth_planning/f1tenth_planning/control/kinematic_mppi/config.yaml")
-
-
-
 
 class MPPI():
     """An MPPI based planner."""
-    def __init__(self, n_iterations=5, n_steps=16, n_samples=16, temperature=0.01,
-                damping=0.001, a_noise=0.5, scan=False,
-                adaptive_covariance=False, mode='st'):
-        self.n_iterations = n_iterations
-        self.n_steps = n_steps
-        self.n_samples = n_samples
+    def __init__(self, config, jRNG, temperature=0.01,
+                damping=0.001, a_noise=0.5, scan=False):
+        self.config = config
+        self.jRNG = jRNG
+        self.n_iterations = config.n_iterations
+        self.n_steps = config.n_steps
+        self.n_samples = config.n_samples
         self.temperature = temperature
         self.damping = damping
         self.a_std = a_noise
         self.scan = scan  # whether to use jax.lax.scan instead of python loop
-        self.adaptive_covariance = adaptive_covariance
-        self.mode = mode
 
+        self.adaptive_covariance = config.adaptive_covariance
+        self.a_shape = config.control_dim
+        self.accum_matrix = jnp.triu(jnp.ones((self.n_steps, self.n_steps)))
 
-    def init_state(self, a_shape, rng):
+    def init_state(self, a_shape):
         # uses random as a hack to support vmap
         # we should find a non-hack approach to initializing the state
         self.dim_a = jnp.prod(a_shape)  # np.int32
-        a_opt = 0.0*jax.random.uniform(rng, shape=(self.n_steps,
+        a_opt = 0.0*jax.random.uniform(self.jRNG.new_key(), shape=(self.n_steps,
                                                 self.dim_a))  # [n_steps, dim_a]
         # a_cov: [n_steps, dim_a, dim_a]
         if self.adaptive_covariance:
@@ -88,8 +104,44 @@ class MPPI():
             a_cov = (self.a_std**2)*jnp.tile(jnp.eye(self.dim_a), (self.n_steps, 1, 1))
         else:
             a_cov = None
-        return (a_opt, a_cov)
+        
+        self.a_opt = a_opt
+        self.a_cov = a_cov
+ 
     
+
+    @partial(jax.jit, static_argnums=(0, 1))
+    def iteration_step(self, env, a_opt, a_cov, rng_da, env_state, reference_traj):
+        self.a_opt = jnp.concatenate([self.a_opt[1:, :],
+                                jnp.expand_dims(jnp.zeros((self.a_shape,)),
+                                                axis=0)])  # [n_steps, a_shape]
+        if self.adaptive_covariance:
+            a_cov = jnp.concatenate([a_cov[1:, :],
+                                    jnp.expand_dims((self.a_std**2)*jnp.eye(self.a_shape),
+                                                    axis=0)])
+        
+        da = jax.random.truncated_normal(
+            rng_da,
+            -jnp.ones_like(a_opt) * self.a_std - a_opt,
+            jnp.ones_like(a_opt) * self.a_std - a_opt,
+            shape=(self.n_samples, self.n_steps, self.a_shape)
+        )  # [n_samples, n_steps, dim_a]
+
+        actions = jnp.clip(jnp.expand_dims(a_opt, axis=0) + da, -1.0, 1.0)
+        _, states = jax.vmap(self.rollout, in_axes=(0, None))(
+            actions, env_state
+        )
+        reward = jax.vmap(env.reward_fn, in_axes=(0, None))(
+            states, reference_traj
+        ) # [n_samples, n_steps]
+        
+        R = jax.vmap(self.returns)(reward) # [n_samples, n_steps], pylint: disable=invalid-name
+        w = jax.vmap(self.weights, 1, 1)(R)  # [n_samples, n_steps]
+        da_opt = jax.vmap(jnp.average, (1, None, 1))(da, 0, w)  # [n_steps, dim_a]
+        a_opt = jnp.clip(a_opt + da_opt, -1.0, 1.0)  # [n_steps, dim_a]
+        return a_opt, a_cov, states
+
+
     @partial(jax.jit, static_argnums=(0, 1))
     def get_a_opt(self, env, a_opt, reference, s, da):
         r = jax.vmap(env.reward_fn, in_axes=(0, None))(
@@ -102,81 +154,73 @@ class MPPI():
         a_opt = jnp.clip(a_opt + da_opt, -1.0, 1.0)  # [n_steps, dim_a]
         return a_opt
 
-    @partial(jax.jit, static_argnums=(0, 1))
-    def get_samples(self, env, env_state, a_opt, rng_da ):
+    @partial(jax.jit, static_argnums=(0))
+    def get_samples(self, env_state, a_opt, rng):
         da = jax.random.truncated_normal(
-                rng_da,
+                rng,
                 -jnp.ones_like(a_opt) - a_opt,
                 jnp.ones_like(a_opt) - a_opt,
                 shape=(self.n_samples, self.n_steps, 2)
             )
         a = jnp.clip(jnp.expand_dims(a_opt, axis=0) + da, -1.0, 1.0)
         # print('up', env_state.shape)
-        r_sample, s, ret_dyna = jax.vmap(self.rollout, in_axes=(0, None, None))(
-            a, env, env_state
-        )
 
-        return r_sample, s, ret_dyna, da, a
+
+        _, s = jax.vmap(self.rollout, in_axes=(0, None))(
+            a, env_state
+        )
+        return s, da
+
+    @partial(jax.jit, static_argnums=(0, 1))
+    def iter_step(self, env, env_state, a_opt, a_cov, rng, reference_traj):
         
-    def update(self, mpc_state, env, env_state, rng):
+        s, da= self.get_samples(env_state, a_opt, rng)
+        # print(s.shape)
+
+        a_opt = self.get_a_opt(env, a_opt, reference_traj, s, da)
+
+
+        
+        _, s_opt = self.rollout(a_opt, env_state)
+            
+        return (a_opt, a_cov, s, s_opt)
+
+    def update(self, env, env_state):
         # mpc_state: ([n_steps, dim_a], [n_steps, dim_a, dim_a])
         # env: {.step(s, a), .reward(s)}
         # env_state: [env_shape] np.float32
         # rng: rng key for mpc sampling
 
-        a_opt, a_cov = mpc_state
-        a_opt = jnp.concatenate([a_opt[1:, :],
+        self.env = env
+        # a_opt, a_cov = mpc_state
+        self.a_opt = jnp.concatenate([self.a_opt[1:, :],
                                 jnp.expand_dims(jnp.zeros((self.dim_a,)),
                                                 axis=0)])  # [n_steps, dim_a]
 
-        def iteration_step(input_, _):
-            a_opt, a_cov, rng = input_
-            rng_da, rng = jax.random.split(rng)
+        a_opt = self.a_opt
+        a_cov = self.a_cov
+        rng = self.jRNG.new_key()
 
-            
-            # da = jax.random.truncated_normal(
-            #     rng_da,
-            #     -jnp.ones_like(a_opt) - a_opt,
-            #     jnp.ones_like(a_opt) - a_opt,
-            #     shape=(self.n_samples, self.n_steps, 2)
-            # )
-            # a = jnp.clip(jnp.expand_dims(a_opt, axis=0) + da, -1.0, 1.0)
-            # print('up', env_state.shape)
-            # r_sample, s, ret_dyna = jax.vmap(self.rollout, in_axes=(0, None, None))(
-            #     a, env, env_state
-            # ) #[n_samples x n_steps, n_samples x n_steps x n_states]
+        for _ in range(self.n_iterations):
+            # (a_opt, a_cov, s, s_opt), _ = iteration_step((a_opt, a_cov, rng), None)
+            # self.a_opt, self.a_cov, s= self.iteration_step(env, self.a_opt, self.a_cov, rng, env_state, env.reference)
+            (a_opt, a_cov, s, s_opt) = self.iter_step(env, env_state, a_opt, a_cov, rng, env.reference)
 
-            r_sample, s, ret_dyna, da, a = self.get_samples(env, env_state, a_opt, rng_da)
-            # print(s.shape)
+            # predicted_states.append(s)
 
-            a_opt = self.get_a_opt(env, a_opt, env.reference, s, da)
+        return (a_opt, a_cov), s, s_opt
 
-
-            
-            _, s_opt, _ = self.rollout(a_opt, env, env_state)
-            
-            return (a_opt, a_cov, s, s_opt, rng, r_sample, a, ret_dyna), None
-        
-        predicted_states = []
-        if not self.scan:
-            for _ in range(self.n_iterations):
-                (a_opt, a_cov, s, s_opt, rng, r_sample, a, ret_dyna), _ = iteration_step((a_opt, a_cov, rng), None)
-                predicted_states.append(s)
-        else:
-            (a_opt, a_cov, rng), _ = jax.lax.scan(
-                iteration_step, (a_opt, a_cov, rng), None, length=self.n_iterations
-            )
-        return (a_opt, a_cov), jnp.stack(predicted_states), s_opt, r_sample, a, ret_dyna
 
     def get_action(self, mpc_state, a_shape):
         a_opt, _ = mpc_state
         return jnp.reshape(a_opt[0, :], a_shape)
 
+
     @partial(jax.jit, static_argnums=(0))
     def returns(self, r):
         # r: [n_steps]
-        return jnp.dot(jnp.triu(jnp.ones((self.n_steps, self.n_steps))),
-                    r)  # R: [n_steps]
+        return jnp.dot(self.accum_matrix, r)  # R: [n_steps]
+
 
     @partial(jax.jit, static_argnums=(0))
     def weights(self, R):  # pylint: disable=invalid-name
@@ -188,30 +232,27 @@ class MPPI():
         w = w/jnp.sum(w)  # [n_samples] np.float32
         return w
     
-    @partial(jax.jit, static_argnums=(0,2))
-    def rollout(self, actions, env, env_state):
+
+    @partial(jax.jit, static_argnums=(0))
+    def rollout(self, actions, env_state):
         # actions: [n_steps, dim_a]
         # env: {.step(s, a), .reward(s)}
         # env_state: np.float32
 
+        def rollout_step(env_state, actions):
+            actions = jnp.reshape(actions, self.env.a_shape)
+            (env_state, env_var, mb_dyna) = self.env.step(env_state, actions)
+            reward = self.env.reward(env_state)
+            return env_state, (env_state, reward)
+
+        scan_output = []
+        for t in range(self.n_steps):
+            env_state, output = rollout_step(env_state, actions[t, :])
+            scan_output.append(output)
+        states, reward = jax.tree_util.tree_map(lambda *x: jnp.stack(x), *scan_output)
+   
+        return reward, states
     
-        def rollout_step(env_state, a):
-            a = jnp.reshape(a, env.a_shape)
-            (env_state, env_var, ret_dyna) = env.step(env_state, a)
-            env_var = jax.device_get(env_var)            
-            r = -env_var
-            return env_state, (env_state, r, ret_dyna)
-        if not self.scan:
-            # python equivalent of lax.scan
-            scan_output = []
-            for t in range(self.n_steps):
-                env_state, output = rollout_step(env_state, actions[t, :])
-                scan_output.append(output)
-            s, r, ret_dyna = jax.tree_util.tree_map(lambda *x: jnp.stack(x), *scan_output)
-        else:
-            _, (s, r) = jax.lax.scan(rollout_step, env_state, actions)
-            
-        return r, s, ret_dyna
     
 class oneLineJaxRNG:
     def __init__(self, init_num=0) -> None:
@@ -582,7 +623,7 @@ class MPPIPlanner(Node):
     def __init__(self):
         super().__init__('mppi_node')
         self.waypoint_path = "/home/bosky2001/Downloads/f1tenth_stack/f1tenth_gym/sim_ws/src/f1tenth_mppi/mppi/trajectories/levine_10s_attempt.csv"
-        self.waypoint_path = "/home/bosky2001/Downloads/f1tenth_stack/f1tenth_gym/sim_ws/src/f1tenth_mppi/mppi/trajectories/levine_10s_attempt.csv"
+
 
         self.waypoints = self.load_waypoints(self.waypoint_path)
 
@@ -599,29 +640,24 @@ class MPPIPlanner(Node):
         self.ref_traj_array_ = self.create_publisher(Float32MultiArray,'ref_traj_array', 1)
         self.opt_traj_array_ = self.create_publisher(Float32MultiArray,'opt_traj_array', 1)
 
-
-        # self.sampled_trajectory_ = self.create_publisher(SampledTrajs,'sampled_trajectories', 1)
-        self.sampled_trajectory_ = self.create_publisher(Float32MultiArray,'sampled_trajectories', 1)
-        self.ref_traj_array_ = self.create_publisher(Float32MultiArray,'ref_traj_array', 1)
-        self.opt_traj_array_ = self.create_publisher(Float32MultiArray,'opt_traj_array', 1)
-
-
         # MPPI params
-        self.n_steps = 12
+        self.n_steps = 10
         self.n_samples = 128
         self.jRNG = oneLineJaxRNG(1337)
         self.DT = 0.1
-        self.is_real = False
-        pose_topic = "/pf/viz/inferred_pose" if self.is_real else "/ego_racecar/odom"
-        self.pose_sub_ = self.create_subscription(PoseStamped if self.is_real else Odometry, pose_topic, self.pose_callback, 1)
+        self.on_car = False
+        pose_topic = "/pf/viz/inferred_pose" if self.on_car else "/ego_racecar/odom"
+        self.pose_sub_ = self.create_subscription(PoseStamped if self.on_car else Odometry, pose_topic, self.pose_callback, 1)
         # self.pose_sub_ = self.create_subscription(Odometry, 'ego_racecar/odom', self.pose_callback, 1)
         self.mppi_env = MPPIEnv(self.waypoints, self.n_steps, mode = 'ks', DT= self.DT)
-        self.mppi = MPPI(n_iterations = 1, n_steps = self.n_steps,
-                         n_samples = self.n_samples, a_noise = 1.0, scan = False)
+
+        self.config = Config()
+        self.config.load_file("/home/bosky2001/Downloads/ESE_6150_FINAL_PROJECT/f1tenth_gym/f1tenth_planning/f1tenth_planning/control/kinematic_mppi/config.yaml")
+        self.mppi = MPPI(self.config,jRNG=self.jRNG, a_noise = 1.0, scan = False)
         
         self.a_opt = None
         self.a_cov = None
-        self.mppi_state = None
+        self.mppi_distrib = None
         
         self.target_vel = 3.5
         self.norm_param = np.array([0.45, 3.5])
@@ -637,34 +673,20 @@ class MPPIPlanner(Node):
         return points
     
     def init_state(self):
-        self.mppi_state =  self.mppi.init_state(self.mppi_env.a_shape, self.jRNG.new_key() )
-        self.a_opt = self.mppi_state[0]
+        self.mppi.init_state(self.mppi_env.a_shape)
+        self.a_opt = self.mppi.a_opt
+        self.a_cov = self.mppi.a_cov
+
+        self.mppi_distrib = (self.a_opt, self.a_cov)
     
     def pose_callback(self, pose_msg):
         start = time.time()
-        # self.a_opt = jnp.concatenate([self.a_opt[1:, :],
-        #             jnp.expand_dims(jnp.zeros((2,)),
-        #                             axis=0)])  # [n_steps, dim_a]
-        
-        # # da = jax.random.normal(
-        # #     self.jRNG.new_key(),
-        # #     shape=(self.n_samples, self.n_steps, self.mppi_env.a_shape)
-        # # ) 
-        # a_opt = self.a_opt.copy()
-        # da = jax.random.truncated_normal(
-        #     self.jRNG.new_key(),
-        #     -jnp.ones_like(a_opt) - a_opt,
-        #     jnp.ones_like(a_opt) - a_opt,
-        #     shape=(self.n_samples, self.n_steps, 2)
-        # )
 
-        x_state = pose_msg.pose.position.x if self.is_real else pose_msg.pose.pose.position.x
-        y_state = pose_msg.pose.position.y if self.is_real else pose_msg.pose.pose.position.y
-        curr_orien = pose_msg.pose.orientation if self.is_real else pose_msg.pose.pose.orientation
-        # x_state = pose_msg.pose.pose.position.x
-        # y_state = pose_msg.pose.pose.position.y
-        # curr_orien = pose_msg.pose.pose.orientation
-        # print(x_state, y_state)
+
+        x_state = pose_msg.pose.position.x if self.on_car else pose_msg.pose.pose.position.x
+        y_state = pose_msg.pose.position.y if self.on_car else pose_msg.pose.pose.position.y
+        curr_orien = pose_msg.pose.orientation if self.on_car else pose_msg.pose.pose.orientation
+
         vel_state = self.drive_msg_.drive.speed
         steer_angle = self.drive_msg_.drive.steering_angle
 
@@ -678,9 +700,9 @@ class MPPIPlanner(Node):
         ref_traj,_ = self.mppi_env.get_refernece_traj(state, target_speed = self.target_vel,  vind = 5, speed_factor= 1)
         # print(ref_traj.shape) #[n_steps + 1, 7]
 
-        self.mppi_state, sampled_traj, s_opt, _, _,_ = self.mppi.update(self.mppi_state, self.mppi_env, state.copy(), self.jRNG.new_key())
+        self.mppi_distrib, sampled_traj, s_opt = self.mppi.update(self.mppi_env, state.copy())
 
-        a_opt = self.mppi_state[0]
+        a_opt = self.mppi_distrib[0]
         control = a_opt[0]
         scaled_control = np.multiply(self.norm_param, control)
         # print(sampled_traj[0].shape) [n_samples, n_steps, 5]
@@ -708,9 +730,8 @@ class MPPIPlanner(Node):
         self.viz_rej_traj(ref_traj)
         self.viz_opt_traj(s_opt)
 
-        # self.viz_sampled_traj(sampled_traj[0])
-        self.pub_sampled_traj(sampled_traj[0])
-        self.pub_sampled_traj(sampled_traj[0])
+        # self.viz_sampled_traj(sampled_traj)
+
         self.ref_goal_points_.publish(self.ref_goal_points_data)
         
 

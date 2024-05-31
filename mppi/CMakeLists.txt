@@ -42,6 +42,7 @@ ament_python_install_package(${PROJECT_NAME})
 install(PROGRAMS
   scripts/mppi_node.py
   scripts/mppi_node_slow.py
+  scripts/mppi_node_faster.py
   scripts/mppi_env.py
 
   DESTINATION lib/${PROJECT_NAME}
