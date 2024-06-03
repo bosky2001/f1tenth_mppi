@@ -17,20 +17,12 @@ from functools import partial
 
 # TODO CHECK: include needed ROS msg type headers and libraries
 import math
-# from jax_mpc.mppi import MPPI
-# from mppi_env import MPPIEnv
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Vector3
 from geometry_msgs.msg import Point
 
 from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
-
-
-from std_msgs.msg import Float32MultiArray, MultiArrayDimension
-
-
-from std_msgs.msg import Float32MultiArray, MultiArrayDimension
 import time
 
 
@@ -65,10 +57,9 @@ class Config(ConfigYAML):
     n_iterations = 1
     control_dim = 2
     control_sample_noise = [1.0, 1.0]
-    state_predictor = 'ks'
-    half_width = 4
-    
+    state_predictor = 'ks'   
     adaptive_covariance = False
+
     # init_noise = [5e-3, 5e-3, 5e-3] # control_vel, control_steering, state 
     init_noise = [0, 0, 0] # control_vel, control_steering, state
     
@@ -653,7 +644,8 @@ class MPPIPlanner(Node):
         self.pose_sub_ = self.create_subscription(PoseStamped if self.on_car else Odometry, pose_topic, self.pose_callback, 1)
         self.normalization_param = np.array(self.config.normalization_param).T
         norm_param = self.normalization_param[0, 7:9]/2
-
+        self.norm_param = norm_param
+        
         self.mppi_env = MPPIEnv(self.waypoints, norm_param, self.n_steps, mode = 'ks', DT= self.DT)
         self.mppi = MPPI(self.config,jRNG=self.jRNG, a_noise = 1.0, scan = False)
         
@@ -662,7 +654,7 @@ class MPPIPlanner(Node):
         self.mppi_distrib = None
         
         self.target_vel = 3.0
-        self.norm_param = np.array([0.45, 3.5])
+        
         self.init_state()
         self.ref_goal_points_data = self.viz_ref_points()
     
@@ -707,9 +699,6 @@ class MPPIPlanner(Node):
         a_opt = self.mppi_distrib[0]
         control = a_opt[0]
         scaled_control = np.multiply(self.norm_param, control)
-        # print(sampled_traj[0].shape) [n_samples, n_steps, 5]
-        # print(control)
-        # print(scaled_control)
         # TODO: check the mppi outputs( its in steerv, accl), convert to vel and steering angle control ig and check mpc node what they do
         
         steerv = scaled_control[0]
