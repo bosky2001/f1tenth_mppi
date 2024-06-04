@@ -28,6 +28,17 @@ You can visualize the reference waypoints, trajectory, optimal trajectory, and s
 
 **Note:** The code assumes the availability of robot odometry data and predefined waypoints. You may need to modify the code or provide the required inputs (e.g., waypoints file path, odometry topic) based on your setup and requirements. Additionally, you can adjust various configuration parameters, such as the number of MPPI iterations, samples, prediction horizon, and other algorithm-specific parameters, based on your system dynamics, performance requirements, and desired behavior.
 
+
+## Demo
+
+Here's a demo of the MPPI planner running in the f1tenth simulator:
+
+![MPPI Planner Demo](data/mppi_viz.gif)
+
+And here's a video showing the planner running on a real robot:
+
+![MPPI Planner on Real Robot](data/mppi_f110.gif)
+
 # CODE WALKTHROUGH
 This repo contains MPPI written in JAX by [Google Research](https://github.com/google-research/google-research/blob/c9f05e51f37cacc291f58799a1f732743625078b/jax_mpc/jax_mpc/mppi.py). JAX is particularly suited for monte-carlo style MPC, as rollouts can be efficiently parallelized using `jax.vmap()`.
 
