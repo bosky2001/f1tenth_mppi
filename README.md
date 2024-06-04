@@ -1,4 +1,33 @@
 Please refer to [INTRO.md](INTRO.md) for a brief overview of **Model Predictive Control (MPC)** and **Model Predictive Path Integral (MPPI)**, as well as the key distinctions between these two approaches.
+
+## Running the Code
+
+To run this code, you need a working ROS2 environment with the required dependencies installed (e.g., `jax`, `jaxlib`, `numpy`, `rclpy`). Follow these steps:
+
+1. In a new terminal, navigate to the catkin workspace containing the source folder and build the environment: 
+```bash
+cd $HOME/sim_ws/src
+colcon build
+```
+2. Launch the f1tenth ROS simulator:
+```bash
+cd $HOME/sim_ws/src
+source install/setup.bash
+ros2 launch f1tenth_gym_ros gym_bridge_launch.py
+```
+3. Source the workspace and run the MPPI node: 
+```bash
+cd $HOME/sim_ws/src
+source install/setup.bash
+ros2 run f1tenth_mppi mppi_node.py
+```
+
+The MPPI planner node will initialize, and once the robot's odometry data starts streaming (from simulation or a real robot), it will compute and publish control commands.
+
+You can visualize the reference waypoints, trajectory, optimal trajectory, and sampled trajectories using tools like RViz or other visualization tools that subscribe to the corresponding ROS topics.
+
+**Note:** The code assumes the availability of robot odometry data and predefined waypoints. You may need to modify the code or provide the required inputs (e.g., waypoints file path, odometry topic) based on your setup and requirements. Additionally, you can adjust various configuration parameters, such as the number of MPPI iterations, samples, prediction horizon, and other algorithm-specific parameters, based on your system dynamics, performance requirements, and desired behavior.
+
 # CODE WALKTHROUGH
 This repo contains MPPI written in JAX by [Google Research](https://github.com/google-research/google-research/blob/c9f05e51f37cacc291f58799a1f732743625078b/jax_mpc/jax_mpc/mppi.py). JAX is particularly suited for monte-carlo style MPC, as rollouts can be efficiently parallelized using `jax.vmap()`.
 
@@ -69,20 +98,6 @@ This Class inherits from the `Node` class provided by ROS2 and represents the MP
  - Visualizes the reference trajectory, optimal trajectory, and sampled trajectories.
 - Visualization methods (`viz_ref_points`, `viz_rej_traj`, `viz_opt_traj`, `viz_sampled_traj`): Provided to visualize the reference waypoints, reference trajectory, optimal trajectory, and sampled trajectories.
 
-## Running the Code
-
-To use this code, you need to have a working ROS2 environment set up and the required dependencies installed (e.g., `jax`, `jaxlib`, `numpy`, `rclpy`). Here are the steps to run the code:
-
-1. Launch the f1tenth ROS simulator by running ` ros2 launch f1tenth_gym_ros gym_bridge_launch.py`
-2. In another terminal, navigate to the catkin workspace directory containing the source folder.
-3. Run ` colcon build ` to build the environment, source the workspace and run ` ros2 run f1tenth_mppi mppi_node.py`
-4. The MPPI planner node should start, and you should see output messages indicating its initialization.
-5. Once the robot's odometry data starts streaming (either from a simulation or a real robot), the MPPI planner will start computing and publishing control commands.
-6. You can visualize the reference waypoints, reference trajectory, optimal trajectory, and sampled trajectories using tools like RViz or other visualization tools that subscribe to the corresponding ROS topics.
-
-Note that the code assumes the availability of a robot's odometry data and a set of predefined waypoints. You may need to modify the code or provide the required inputs (e.g., waypoints file path, odometry topic) based on your specific setup and requirements.
-
-Additionally, the code includes various configuration parameters, such as the number of MPPI iterations, samples, prediction horizon, and other algorithm-specific parameters. You may need to adjust these parameters based on your system dynamics, performance requirements, and desired behavior.
 
 Overall, this code provides an implementation of the MPPI algorithm for motion planning and control in autonomous systems, specifically tailored for the F1TENTH autonomous racing platform. However, it may require additional integration and customization to work with your specific setup and requirements.
 Additionally, the code includes various configuration parameters, such as the number of MPPI iterations, samples, prediction horizon, and other algorithm-specific parameters. You may need to adjust these parameters based on your system dynamics, performance requirements, and desired behavior.
