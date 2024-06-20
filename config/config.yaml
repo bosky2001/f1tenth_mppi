@@ -15,12 +15,14 @@ normalization_param:
   - -8.143256105258684
 # - - 0.8 # 7 steering velocity
 #   - -0.4
-- - 6.0 # 7 steering velocity
-  - -3.0
-- - 7.0 # 8 acceleration
-  - -3.5 
-# - - 2.0 # 8 acceleration
-#   - -1 
+# - - 6.0 # 7 steering velocity
+  # - -3.0
+- - 3.0 # 7 steering velocity
+  - -1.5
+# - - 7.0 # 8 acceleration
+#   - -3.5 
+- - 2.0 # 8 acceleration
+  - -1 
 - - 400 # 9 frenet s
   - 0
 - - 8 # 10 frenet ey
