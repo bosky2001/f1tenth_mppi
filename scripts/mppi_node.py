@@ -133,7 +133,14 @@ class MPPI():
         return s, da
 
     @partial(jax.jit, static_argnums=(0, 1))
-    def iter_step(self, env, env_state, a_opt, a_cov, rng, reference_traj):
+    def iter_step(self, env, env_state, rng, reference_traj):
+
+        self.a_opt = jnp.concatenate([self.a_opt[1:, :],
+                                jnp.expand_dims(jnp.zeros((self.dim_a,)),
+                                                axis=0)])  # [n_steps, dim_a]
+
+        a_opt = self.a_opt
+        a_cov = self.a_cov
         
         s, da= self.get_samples(env_state, a_opt, rng)
         # print(s.shape)
@@ -155,22 +162,16 @@ class MPPI():
 
         
         # a_opt, a_cov = mpc_state
-        self.a_opt = jnp.concatenate([self.a_opt[1:, :],
-                                jnp.expand_dims(jnp.zeros((self.dim_a,)),
-                                                axis=0)])  # [n_steps, dim_a]
-
-        a_opt = self.a_opt
-        a_cov = self.a_cov
-        
 
         for _ in range(self.n_iterations):
             # (a_opt, a_cov, s, s_opt), _ = iteration_step((a_opt, a_cov, rng), None)
             # self.a_opt, self.a_cov, s= self.iteration_step(env, self.a_opt, self.a_cov, rng, env_state, env.reference)
-            (a_opt, a_cov, s, s_opt) = self.iter_step(env, env_state, a_opt, a_cov, rng, env.reference)
+            (a_opt, a_cov, s, s_opt) = self.iter_step(env, env_state,rng, env.reference)
 
             # predicted_states.append(s)
 
-        
+        # self.a_opt = a_opt
+        # self.a_cov = a_cov
         return (a_opt, a_cov), s, s_opt
 
 
