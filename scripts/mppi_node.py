@@ -82,10 +82,11 @@ class MPPI():
         self.a_shape = config.control_dim
         self.accum_matrix = jnp.triu(jnp.ones((self.n_steps, self.n_steps)))
 
-    def init_state(self, a_shape):
+    def init_state(self, env):
         # uses random as a hack to support vmap
         # we should find a non-hack approach to initializing the state
-        self.dim_a = jnp.prod(a_shape)  # np.int32
+        self.env = env
+        self.dim_a = jnp.prod(self.env.a_shape)  # np.int32
         a_opt = 0.0*jax.random.uniform(self.jRNG.new_key(), shape=(self.n_steps,
                                                 self.dim_a))  # [n_steps, dim_a]
         # a_cov: [n_steps, dim_a, dim_a]
@@ -99,38 +100,7 @@ class MPPI():
         self.a_opt = a_opt
         self.a_cov = a_cov
  
-    
 
-    @partial(jax.jit, static_argnums=(0, 1))
-    def iteration_step(self, env, a_opt, a_cov, rng_da, env_state, reference_traj):
-        self.a_opt = jnp.concatenate([self.a_opt[1:, :],
-                                jnp.expand_dims(jnp.zeros((self.a_shape,)),
-                                                axis=0)])  # [n_steps, a_shape]
-        if self.adaptive_covariance:
-            a_cov = jnp.concatenate([a_cov[1:, :],
-                                    jnp.expand_dims((self.a_std**2)*jnp.eye(self.a_shape),
-                                                    axis=0)])
-        
-        da = jax.random.truncated_normal(
-            rng_da,
-            -jnp.ones_like(a_opt) * self.a_std - a_opt,
-            jnp.ones_like(a_opt) * self.a_std - a_opt,
-            shape=(self.n_samples, self.n_steps, self.a_shape)
-        )  # [n_samples, n_steps, dim_a]
-
-        actions = jnp.clip(jnp.expand_dims(a_opt, axis=0) + da, -1.0, 1.0)
-        _, states = jax.vmap(self.rollout, in_axes=(0, None))(
-            actions, env_state
-        )
-        reward = jax.vmap(env.reward_fn, in_axes=(0, None))(
-            states, reference_traj
-        ) # [n_samples, n_steps]
-        
-        R = jax.vmap(self.returns)(reward) # [n_samples, n_steps], pylint: disable=invalid-name
-        w = jax.vmap(self.weights, 1, 1)(R)  # [n_samples, n_steps]
-        da_opt = jax.vmap(jnp.average, (1, None, 1))(da, 0, w)  # [n_steps, dim_a]
-        a_opt = jnp.clip(a_opt + da_opt, -1.0, 1.0)  # [n_steps, dim_a]
-        return a_opt, a_cov, states
 
 
     @partial(jax.jit, static_argnums=(0, 1))
@@ -176,13 +146,14 @@ class MPPI():
             
         return (a_opt, a_cov, s, s_opt)
 
-    def update(self, env, env_state):
+    # @partial(jax.jit, static_argnums=(0, 1))
+    def update(self, env, env_state, rng):
         # mpc_state: ([n_steps, dim_a], [n_steps, dim_a, dim_a])
         # env: {.step(s, a), .reward(s)}
         # env_state: [env_shape] np.float32
         # rng: rng key for mpc sampling
 
-        self.env = env
+        
         # a_opt, a_cov = mpc_state
         self.a_opt = jnp.concatenate([self.a_opt[1:, :],
                                 jnp.expand_dims(jnp.zeros((self.dim_a,)),
@@ -190,7 +161,7 @@ class MPPI():
 
         a_opt = self.a_opt
         a_cov = self.a_cov
-        rng = self.jRNG.new_key()
+        
 
         for _ in range(self.n_iterations):
             # (a_opt, a_cov, s, s_opt), _ = iteration_step((a_opt, a_cov, rng), None)
@@ -199,6 +170,7 @@ class MPPI():
 
             # predicted_states.append(s)
 
+        
         return (a_opt, a_cov), s, s_opt
 
 
@@ -667,7 +639,7 @@ class MPPIPlanner(Node):
         return points
     
     def init_state(self):
-        self.mppi.init_state(self.mppi_env.a_shape)
+        self.mppi.init_state(self.mppi_env)
         self.a_opt = self.mppi.a_opt
         self.a_cov = self.mppi.a_cov
 
@@ -694,7 +666,7 @@ class MPPIPlanner(Node):
         ref_traj,_ = self.mppi_env.get_refernece_traj(state, target_speed = self.target_vel,  vind = 5, speed_factor= 1)
         # print(ref_traj.shape) #[n_steps + 1, 7]
 
-        self.mppi_distrib, sampled_traj, s_opt = self.mppi.update(self.mppi_env, state.copy())
+        self.mppi_distrib, sampled_traj, s_opt = self.mppi.update(self.mppi_env, state.copy(), self.jRNG.new_key())
 
         a_opt = self.mppi_distrib[0]
         control = a_opt[0]
